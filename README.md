@@ -9,7 +9,7 @@ The package can be installed on Linux and Mac using `devtools`:
 ```R
 install.packages('devtools')
 library('devtools')
-devtools::install_github(MaStatLab/BGCR)
+devtools::install_github('MaStatLab/BGCR')
 ```
 
 ### Reference
