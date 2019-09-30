@@ -164,6 +164,8 @@ BGCR <- function(PrJAP = 0.5,
       return(0)
     }else{
       X = rbind(X_group_1, X_group_2)
+      X = sweep(X, 2, apply(X, 2, mean), "-")
+      X = sweep(X, 2, apply(X, 2, sd), "/")
       X_null = cbind(rep(1, dim(X)[1]), X)
       X_alt = cbind(X_null, c(rep(0, dim(X_group_1)[1]), rep(1, dim(X_group_2)[1])))
       return(list(X_null = X_null, X_alt = X_alt))
