@@ -2,14 +2,17 @@
 % Please edit documentation in R/BGCR.R
 \name{BGCR}
 \alias{BGCR}
-\title{Bayesian Graphical compositional Regression}
+\title{Bayesian Graphical Compositional Regression}
 \usage{
-BGCR(PrJAP = 0.5, sum_PrMAP = "default", threshold = 0.005,
-  kappa = 0, tree, otu_group_1, otu_group_2, X_group_1 = "default",
-  X_group_2 = "default", nu = 10^(seq(-1, 4)), sigma = 4,
+BGCR(formula, data, PrJAP = 0.5, sum_PrMAP = "default",
+  threshold = 0.005, kappa = 0, nu = 10^(seq(-1, 4)), sigma = 4,
   verbose = FALSE)
 }
 \arguments{
+\item{formula}{a one-sided formula that describes the covariates need to be adjusted.}
+
+\item{data}{a phyloseq object containing the otu table, the covariates and the phylogenetic tree. In the OTU table, taxa are rows. The covariate table must contain a grouping variable named "group", with factor levels 0 and 1.}
+
 \item{PrJAP}{a value between 0 and 1. The prior joint alternative probability used for choosing \eqn{\alpha}.}
 
 \item{sum_PrMAP}{a positive value less than the total number of internal nodes in the phylogenetic tree. The sum of prior marginal alternative probability used for choosing \eqn{\tau}. The default value is set to 2, recommended for 100 OTUs.}
@@ -17,16 +20,6 @@ BGCR(PrJAP = 0.5, sum_PrMAP = "default", threshold = 0.005,
 \item{threshold}{a positive value controls the accuracy used for the empirical Bayes estimate of \eqn{\tau}.}
 
 \item{kappa}{a non-negative value controls the chaining pattern will occur along the phylogenetic tree. The default value 0 introduces an explaning away effect.}
-
-\item{tree}{an object of class ``phylo'' defined by the \code{ape} package that summarizes the phylogenetic information of the OTUs.}
-
-\item{otu_group_1}{a matrix containing the OTU samples of the first group. Each row represents an OTU, each column represents a sample.}
-
-\item{otu_group_2}{a matrix containing the OTU samples of the second group, same as \code{otu_group_1}.}
-
-\item{X_group_1}{a matrix containg the covariate of samples in the first group that need to be adjusted in the test. Each row represetns a sample, each column represents a covariate. The default setting adjusts for no covariate.}
-
-\item{X_group_2}{a matrix containg the covariate of samples in the second group, same as \code{X_group_2}.}
 
 \item{nu}{a vector contains a sequence of the dispersion parameter \eqn{\nu} used for numerically computing the marginal likelihood.}
 
@@ -52,19 +45,37 @@ Fit the Bayesian Graphical Compositional Regression for comparing two groups of 
 }
 \examples{
 library(ape)
-exp_tree <- rtree(4) #create a phylogenetic tree with 4 leaves
+library(phyloseq)
 
-#generate the OTU table for the first group
-otu1 <- matrix(c(2,3,4,6,3,5,5,8), nrow = 4, byrow = TRUE)
+#create a phyloseq object (https://joey711.github.io/phyloseq/import-data.html).
 
-#generate the OTU table for the second group
-otu2 <- matrix(c(1,1,1,1,2,2,2,2), nrow = 4, byrow = TRUE)
+otumat = matrix(sample(1:100, 100, replace = TRUE), nrow = 10, ncol = 10)
+rownames(otumat) <- paste0("OTU", 1:nrow(otumat))
+colnames(otumat) <- paste0("Sample", 1:ncol(otumat))
 
-rownames(otu1) <- exp_tree$tip.label #name the OTUs in the OTU table
-rownames(otu2) <- exp_tree$tip.label #name the OTUs in the OTU table
+taxmat = matrix(sample(letters, 70, replace = TRUE), nrow = nrow(otumat), ncol = 7)
+rownames(taxmat) <- rownames(otumat)
+colnames(taxmat) <- c("Domain", "Phylum", "Class", "Order", "Family", "Genus", "Species")
 
-result <- BGCR(PrJAP = 0.5, sum_PrMAP = "default", threshold = 0.005,
-               kappa = 0, tree = exp_tree, otu_group_1 = otu1, otu_group_2 = otu2)
+OTU = otu_table(otumat, taxa_are_rows = TRUE)
+TAX = tax_table(taxmat)
+sampledata = sample_data(data.frame(
+  group = factor(c(rep(0, 4), rep(1, 6))),
+  Location = factor(sample(c(0,1), size=nsamples(physeq), replace=TRUE)),
+  Depth = sample(50:1000, size=nsamples(physeq), replace=TRUE),
+  row.names=sample_names(physeq),
+  stringsAsFactors=FALSE
+))
+
+random_tree = rtree(ntaxa(physeq), rooted=TRUE, tip.label=taxa_names(physeq))
+
+data = phyloseq(OTU, TAX, sampledata, random_tree)
+
+#run BGCR, first adjusting for no covariate
+result <- BGCR(~group, data)
+
+#run BGCR, adjusting for some covariate
+result <- BGCR(~group + Location + Depth, data)
 
 plot(x = result)
 
